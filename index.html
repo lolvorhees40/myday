@@ -168,6 +168,7 @@ function toast(msg,ms=2600){const t=$('#toast');t.textContent=msg;t.classList.ad
 function greeting(){const h=new Date().getHours();return h<5?'Late night':h<12?'Good morning':h<17?'Good afternoon':'Good evening'}
 
 /* ---------- constants ---------- */
+const APP_VERSION='1.4 (16 Nov, Health sync)';
 const DEFAULT_SETTINGS={eatBack:50,bodyKg:110,kcal:2300,protein:170,carbs:230,fat:75,water:3000,name:'Zuhair'};
 const DEFAULT_EXERCISES=["Goblet squat","Dumbbell RDL","Incline dumbbell press","Push-ups","Dumbbell row","Lat pulldown","Plank (sec)","Leg press","Dumbbell shoulder press","Bicep curl","Triceps pushdown","Chest press machine","Seated cable row","Lunges"];
 const TEMPLATES={"Full body A":["Goblet squat","Incline dumbbell press","Dumbbell row","Plank (sec)"],"Full body B":["Dumbbell RDL","Push-ups","Lat pulldown","Plank (sec)"]};
@@ -199,7 +200,10 @@ function setSync(kind,text){const s=$('#sync');s.className='sync '+kind;s.queryS
 async function init(){
   state.docs=localLoad();setSync('ok','Saved on phone');render();
   try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}
-  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if('serviceWorker' in navigator&&location.protocol==='https:'){
+    navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{document.addEventListener('visibilitychange',()=>{if(!document.hidden)reg.update().catch(()=>{})})}).catch(()=>{});
+    let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded)return;reloaded=true;localSave();location.reload()});
+  }
   let last=0;try{last=+localStorage.getItem('myday-lastbackup')||0}catch(e){}
   if(Object.keys(state.docs).length>5&&Date.now()-last>7*864e5)setTimeout(()=>toast('Tip: make a backup in ⚙︎ Settings',4000),1500);
 }
@@ -703,7 +707,7 @@ function sheetSettings(){const s=settings();
   <div class="muted small">Your data lives only on this phone. Back up every week or so and keep the file in iCloud Drive (Files app).</div>
   <button class="ghost" id="bk" style="width:100%;margin-top:10px">⬇️ Back up my data</button>
   <label class="ghost btnl" style="margin-top:8px">⬆️ Restore from a backup file<input type="file" accept=".json,application/json,text/plain" id="rs" hidden></label>
-  <button class="link" id="pst" style="width:100%;margin-top:6px">Restore from copied text</button>`,p=>{
+  <button class="link" id="pst" style="width:100%;margin-top:6px">Restore from copied text</button><div class="muted small" style="text-align:center;margin-top:14px">My Day version ${APP_VERSION}</div>`,p=>{
     $('#sv',p).onclick=()=>{const ns={...(state.docs.settings||{}),name:$('#nm',p).value.trim(),kcal:num($('#k',p).value)||2300,protein:num($('#p',p).value)||170,carbs:num($('#c',p).value)||230,fat:num($('#f',p).value)||75,water:num($('#w',p).value)||3000,bodyKg:num($('#bw',p).value)||110,eatBack:num($('#eb',p).value),exercises:$('#ex',p).value.split('\n').map(x=>x.trim()).filter(Boolean)};save('settings',ns);closeSheet();toast('Settings saved')};
     $('#hs',p).onclick=sheetShortcutHelp;
     $('#bk',p).onclick=async()=>{localSave();const json=JSON.stringify({app:'myday',v:1,exportedAt:new Date().toISOString(),docs:state.docs});const name=`myday-backup-${TODAY()}.json`;
