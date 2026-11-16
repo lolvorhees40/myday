@@ -35,6 +35,8 @@ header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;
 .icon{background:transparent;padding:6px 8px;font-size:20px}
 main{padding:4px 14px calc(env(safe-area-inset-bottom) + 150px);max-width:640px;margin:0 auto}
 nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-around;background:rgba(18,20,26,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 6px calc(env(safe-area-inset-bottom) + 6px)}
+nav::after{content:'';position:absolute;left:0;right:0;top:100%;height:300px;background:rgb(18,20,26)}
+html{background:rgb(18,20,26)}body{min-height:100vh;background:var(--bg)}
 nav button{background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted);padding:6px 8px;flex:1}
 nav button b{font-size:21px;font-weight:400;filter:grayscale(1);opacity:.7}
 nav button.on{color:var(--text)}nav button.on b{filter:none;opacity:1}
@@ -119,6 +121,7 @@ nav button.on{color:var(--text)}nav button.on b{filter:none;opacity:1}
 .check input{width:20px;height:20px;flex:none}
 .scanbox{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3}.scanbox video{width:100%;height:100%;object-fit:cover;display:block}.scanline{position:absolute;left:12%;right:12%;top:50%;height:2px;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pulse 1.4s ease-in-out infinite}@keyframes pulse{50%{opacity:.35}}
 .btnl{display:flex;align-items:center;justify-content:center;padding:10px;border-radius:12px;font-size:14px;cursor:pointer;background:transparent;border:1px solid var(--line)}
+.tblwrap{overflow-x:auto;margin:6px -4px}.bt{width:100%;border-collapse:separate;border-spacing:2px;font-size:12.5px;font-variant-numeric:tabular-nums}.bt th,.bt td{padding:6px 3px;text-align:center;border-radius:6px}.bt th{color:var(--muted);font-weight:600;font-size:11.5px}.bt tr th:first-child{text-align:left;white-space:nowrap}.bt td{background:var(--card2)}
 .sec{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:18px 4px 2px;font-weight:700}
 </style>
 </head>
@@ -164,10 +167,10 @@ function toast(msg,ms=2600){const t=$('#toast');t.textContent=msg;t.classList.ad
 function greeting(){const h=new Date().getHours();return h<5?'Late night':h<12?'Good morning':h<17?'Good afternoon':'Good evening'}
 
 /* ---------- constants ---------- */
-const DEFAULT_SETTINGS={kcal:2300,protein:170,carbs:230,fat:75,water:3000,name:'Zuhair'};
+const DEFAULT_SETTINGS={bodyKg:110,kcal:2300,protein:170,carbs:230,fat:75,water:3000,name:'Zuhair'};
 const DEFAULT_EXERCISES=["Goblet squat","Dumbbell RDL","Incline dumbbell press","Push-ups","Dumbbell row","Lat pulldown","Plank (sec)","Leg press","Dumbbell shoulder press","Bicep curl","Triceps pushdown","Chest press machine","Seated cable row","Lunges"];
 const TEMPLATES={"Full body A":["Goblet squat","Incline dumbbell press","Dumbbell row","Plank (sec)"],"Full body B":["Dumbbell RDL","Push-ups","Lat pulldown","Plank (sec)"]};
-const CARDIO=["Incline walk","Swimming","Bike","Walk","Run","Elliptical","Football","Other"];
+const CARDIO=["Incline walk","Walk","Run","Swimming","Bike","Elliptical","Stair climber","Football","Other"];
 const MEALS=["Breakfast","Lunch","Dinner","Snack"];
 const REPEAT={none:'Once',daily:'Every day',weekdays:'Weekdays (Mon–Fri)',weekly:'Every week'};
 const RPE_TXT={1:'Very easy',2:'Easy',3:'Easy',4:'Light',5:'Moderate',6:'Moderate',7:'Hard, 3 reps left',8:'Hard, 2 reps left',9:'Very hard, 1 rep left',10:'Max effort'};
@@ -284,7 +287,35 @@ function suggest(name,ds){
   return Object.assign({prefill:rep(3,{reps:10,kg:''}),text:''},advice(l.e)||{},{last:l});
 }
 function setsTxt(e){const t=isTimed(e.name);return (e.sets||[]).map(s=>t?`${r0(s.reps)} s`:num(s.kg)?`${r0(s.reps)} × ${r1(s.kg)} kg`:`${r0(s.reps)} reps`)}
-function entrySummary(e){if(e.type==='cardio')return `${r0(e.minutes)} min${e.km?' · '+r1(e.km)+' km':''}${e.rpe?' · RPE '+e.rpe:''}`;const s=setsTxt(e);return `${s.length} sets${s.length?' · '+s[0]:''}`}
+function entrySummary(e){if(e.type==='cardio')return `${r0(e.minutes)} min${num(e.speed)?' · '+r1(e.speed)+' km/h':''}${num(e.incline)?' · '+r1(e.incline)+'% incline':''}${e.km?' · '+r1(e.km)+' km':''}${e.kcal?' · ~'+r0(e.kcal)+' kcal':''}${e.rpe?' · RPE '+e.rpe:''}`;const s=setsTxt(e);return `${s.length} sets${s.length?' · '+s[0]:''}`}
+/* ---------- calorie burn estimates ---------- */
+const TREAD=['Incline walk','Walk','Run'];
+// METs (easy / moderate / hard), from the Compendium of Physical Activities (approximate)
+const METS={'Incline walk':[5,6,8],'Walk':[3,3.5,4.3],'Run':[8,9.8,11.5],'Swimming':[5.8,8.3,9.8],'Bike':[4.8,6.8,8.8],'Elliptical':[4,5,6.5],'Stair climber':[6,8.8,9],'Football':[7,7,10],'Other':[4,5.5,7]};
+function bodyKg(){const w=allDays().filter(d=>d.weight).pop();return w?num(w.weight):(num(settings().bodyKg)||110)}
+// ACSM metabolic equations: walking below ~7 km/h, running above
+function treadKcalMin(kmh,incline,kg){const v=kmh*1000/60,g=incline/100;const vo2=kmh<7?0.1*v+1.8*v*g+3.5:0.2*v+0.9*v*g+3.5;return vo2*kg/1000*5}
+function metKcalMin(name,rpe,kg){const m=METS[name]||METS.Other;const lvl=num(rpe)<=4?0:num(rpe)<=7?1:2;return m[lvl]*3.5*kg/200}
+function cardioKcal(e){if(num(e.kcalManual))return num(e.kcalManual);const kg=bodyKg(),min=num(e.minutes);if(TREAD.includes(e.name)&&num(e.speed))return treadKcalMin(num(e.speed),num(e.incline),kg)*min;return metKcalMin(e.name,e.rpe,kg)*min}
+function sheetBurnTable(){
+  let mins=30;const kg=bodyKg();
+  const walkS=[3,3.5,4,4.5,5,5.5,6,6.5],walkI=[0,3,6,9,12,15],runS=[7,8,9,10,11,12],runI=[0,1,2,3,5];
+  const shade=(v,max)=>`background:rgba(124,242,156,${(0.06+0.5*v/max).toFixed(2)})`;
+  const table=(speeds,incs)=>{const vals=speeds.map(s=>incs.map(i=>treadKcalMin(s,i,kg)*mins)),max=Math.max(...vals.flat());
+    return `<div class="tblwrap"><table class="bt"><tr><th>km/h</th>${incs.map(i=>`<th>${i}%</th>`).join('')}</tr>${speeds.map((s,a)=>`<tr><th>${s}</th>${vals[a].map(v=>`<td style="${shade(v,max)}">${r0(v)}</td>`).join('')}</tr>`).join('')}</table></div>`};
+  const draw=()=>openSheet(`<h3>🔥 Calorie burn table</h3>
+    <div class="muted small">Estimated kcal for <b>${mins} min</b> at <b>${r1(kg)} kg</b> (${allDays().some(d=>d.weight)?'your latest logged weight':'from Settings'}). Don't hold the handrails, or the real burn is lower.</div>
+    <div class="chips" id="dm" style="margin-top:8px">${[10,20,30,45,60].map(m=>`<button class="chip ${m===mins?'on':''}" data-m="${m}">${m} min</button>`).join('')}</div>
+    <div class="sec" style="margin-left:0">Treadmill walking</div><div class="muted small">Rows: speed (km/h) · Columns: incline %</div>${table(walkS,walkI)}
+    <div class="sec" style="margin-left:0">Treadmill running</div>${table(runS,runI)}
+    <div class="sec" style="margin-left:0">Other cardio</div>
+    <div class="tblwrap"><table class="bt"><tr><th>Activity</th><th>Easy</th><th>Moderate</th><th>Hard</th></tr>${Object.keys(METS).filter(k=>!TREAD.includes(k)&&k!=='Other').map(k=>`<tr><th>${k}</th>${METS[k].map(m=>`<td>${r0(m*3.5*kg/200*mins)}</td>`).join('')}</tr>`).join('')}</table></div>
+    <div class="tip">💡 For fat loss at your weight, an incline walk (5–5.5 km/h at 8–12%) burns about as much as slow jogging and is much easier on your knees.</div>
+    <div class="muted small" style="margin-top:8px">Estimates use the ACSM treadmill equations and standard activity METs. They're usually within about ±15–20% of the real burn, and closer than most machine displays.</div>`,p=>{
+      $$('#dm .chip',p).forEach(b=>b.onclick=()=>{mins=+b.dataset.m;draw()});
+    });
+  draw();
+}
 const e1rm=s=>num(s.kg)*(1+num(s.reps)/30);
 
 /* ---------- small UI parts ---------- */
@@ -334,8 +365,10 @@ function viewTrain(){
   const ds=state.date,w=getDay(ds).workouts||[];
   const vol=w.filter(e=>e.type!=='cardio').reduce((a,e)=>a+(e.sets||[]).reduce((b,s)=>b+num(s.reps)*num(s.kg),0),0);
   const sets=w.filter(e=>e.type!=='cardio').reduce((a,e)=>a+(e.sets||[]).length,0);
-  return dateNav(ds)+`<div class="card"><div class="ct">Quick start</div><div class="chips">${Object.keys(TEMPLATES).map(k=>`<button class="chip" data-act="template" data-v="${k}">${k}</button>`).join('')}<button class="chip" data-act="addCardio">🏃 Cardio</button></div><div class="muted small">Pick a session to see your target for each exercise, based on last time.</div></div>`+
-  (w.length?`<div class="muted small" style="margin:4px 4px">${w.length} exercises · ${sets} sets${vol?` · ${r0(vol).toLocaleString()} kg total volume`:''}</div>`+w.map(workoutCard).join(''):'<div class="card empty">No exercises logged for this day yet.</div>')+
+  const burn=w.filter(e=>e.type==='cardio').reduce((a,e)=>a+num(e.kcal),0);
+  return dateNav(ds)+`<div class="card"><div class="ct">Quick start</div><div class="chips">${Object.keys(TEMPLATES).map(k=>`<button class="chip" data-act="template" data-v="${k}">${k}</button>`).join('')}<button class="chip" data-act="addCardio">🏃 Cardio</button></div><div class="muted small">Pick a session to see your target for each exercise, based on last time.</div></div>
+  <button class="card" data-act="burnTable" style="width:100%;text-align:left;display:flex;align-items:center;gap:12px"><span style="font-size:26px">🔥</span><span style="flex:1"><b>Calorie burn table</b><br><span class="muted small">Treadmill speed × incline, swimming, bike and more</span></span><span class="muted">›</span></button>`+
+  (w.length?`<div class="muted small" style="margin:4px 4px">${w.length} exercises · ${sets} sets${vol?` · ${r0(vol).toLocaleString()} kg volume`:''}${burn?` · ~${r0(burn)} kcal cardio`:''}</div>`+w.map(workoutCard).join(''):'<div class="card empty">No exercises logged for this day yet.</div>')+
   `<button class="fab" data-act="addEx">+ Add exercise</button>`;
 }
 function viewTasks(){
@@ -567,7 +600,7 @@ function sheetExercise(ds,entry,presetName,cardio){
   let e=entry?clone(entry):{id:gen(),type:cardio?'cardio':'strength',name:presetName||(cardio?CARDIO[0]:''),sets:[],rpe:7,notes:'',minutes:30,km:''};
   if(!entry&&e.type==='strength'&&presetName)e.sets=clone(suggest(presetName,ds).prefill);
   if(!entry&&e.type==='strength'&&!e.sets.length)e.sets=rep(3,{reps:10,kg:''});
-  const sync=p=>{if(e.type==='strength'){e.name=$('#en',p).value.trim();e.sets=$$('.srow',p).map(r=>({reps:num($('.rr',r).value),kg:$('.kk',r)?num($('.kk',r).value):0}))}else{e.name=$('#cn',p).value;e.minutes=num($('#mn',p).value);e.km=num($('#km',p).value)||''}e.rpe=num($('#rpe',p).value);e.notes=$('#nt',p).value.trim()};
+  const sync=p=>{if(e.type==='strength'){e.name=$('#en',p).value.trim();e.sets=$$('.srow',p).map(r=>({reps:num($('.rr',r).value),kg:$('.kk',r)?num($('.kk',r).value):0}))}else{e.name=$('#cn',p).value;e.minutes=num($('#mn',p).value);e.km=num($('#km',p).value)||'';e.speed=$('#sp',p)?num($('#sp',p).value)||'':'';e.incline=$('#inc',p)?num($('#inc',p).value):'';e.kcalManual=num($('#kcm',p).value)||''}e.rpe=num($('#rpe',p).value);e.notes=$('#nt',p).value.trim()};
   const draw=()=>{
     const timed=isTimed(e.name),s=e.type==='strength'?suggest(e.name,ds):null;
     openSheet(`<h3>${entry?'Edit':'Log'} ${e.type==='cardio'?'cardio':'exercise'} · ${fmtDay(ds)}</h3>
@@ -578,12 +611,17 @@ function sheetExercise(ds,entry,presetName,cardio){
       ${e.sets.map((x,i)=>`<div class="setrow srow"><span class="n">Set ${i+1}</span><input class="rr" inputmode="numeric" type="number" value="${x.reps===''?'':esc(x.reps)}">${timed?'<span></span>':`<input class="kk" inputmode="decimal" type="number" step="any" value="${x.kg===''?'':esc(x.kg)}" placeholder="0 = bodyweight">`}<button data-rm="${i}" aria-label="Remove set">✕</button></div>`).join('')}
       <button class="ghost" id="as" style="width:100%;margin-top:4px">+ Add set</button>`
     :`<label class="f">Activity</label><select id="cn">${[...new Set([...CARDIO,e.name])].map(x=>`<option ${x===e.name?'selected':''}>${esc(x)}</option>`).join('')}</select>
-      <div class="row"><div><label class="f">Minutes</label><input id="mn" type="number" inputmode="numeric" value="${esc(e.minutes)}"></div><div><label class="f">Distance km</label><input id="km" type="number" inputmode="decimal" step="any" value="${esc(e.km)}" placeholder="optional"></div></div>`}
+      <div class="row"><div><label class="f">Minutes</label><input id="mn" type="number" inputmode="numeric" value="${esc(e.minutes)}"></div><div><label class="f">Distance km</label><input id="km" type="number" inputmode="decimal" step="any" value="${esc(e.km)}" placeholder="optional"></div></div>
+      ${TREAD.includes(e.name)?`<div class="row"><div><label class="f">Speed km/h</label><input id="sp" type="number" inputmode="decimal" step="any" value="${esc(e.speed||'')}" placeholder="e.g. 5.5"></div><div><label class="f">Incline %</label><input id="inc" type="number" inputmode="decimal" step="any" value="${esc(e.incline===undefined?'':e.incline)}" placeholder="e.g. 10"></div></div>`:''}
+      <label class="f">Calories from the machine (optional)</label><input id="kcm" type="number" inputmode="numeric" value="${esc(e.kcalManual||'')}" placeholder="leave empty to use my estimate">
+      <div class="tip" id="kc"></div>`}
     <label class="f">Intensity (RPE): <b id="rl">${e.rpe} · ${RPE_TXT[e.rpe]||''}</b></label><input id="rpe" type="range" min="1" max="10" step="1" value="${e.rpe}" style="padding:0;accent-color:#7cf29c">
     <label class="f">Notes</label><input id="nt" value="${esc(e.notes)}" placeholder="e.g. felt knee on last set">
     <button class="primary" id="sv">${entry?'Save':'Log it'}</button>${entry?'<button class="danger" id="del">Delete</button>':''}`,p=>{
       $$('[data-ty]',p).forEach(b=>b.onclick=()=>{sync(p);e.type=b.dataset.ty;e.name=e.type==='cardio'?CARDIO[0]:'';if(e.type==='strength'&&!e.sets.length)e.sets=rep(3,{reps:10,kg:''});draw()});
-      $('#rpe',p).oninput=ev=>{$('#rl',p).textContent=ev.target.value+' · '+(RPE_TXT[ev.target.value]||'')};
+      const est=()=>{if(e.type!=='cardio')return;sync(p);const k=cardioKcal(e);$('#kc',p).innerHTML=`🔥 ≈ <b>${r0(k)} kcal</b> ${num(e.kcalManual)?'(from machine)':TREAD.includes(e.name)&&num(e.speed)?`at ${r1(e.speed)} km/h, ${r1(e.incline)}% for ${r0(e.minutes)} min`:`for ${r0(e.minutes)} min at RPE ${e.rpe}${TREAD.includes(e.name)?'. Add speed & incline for a better estimate':''}`}`};
+      $('#rpe',p).oninput=ev=>{$('#rl',p).textContent=ev.target.value+' · '+(RPE_TXT[ev.target.value]||'');est()};
+      if(e.type==='cardio'){['#mn','#sp','#inc','#kcm'].forEach(id=>{const el=$(id,p);if(el)el.oninput=est});$('#cn',p).onchange=()=>{sync(p);draw()};est()}
       if(e.type==='strength'){
         $('#en',p).onchange=()=>{const old=e.name;sync(p);if(!entry&&norm(old)!==norm(e.name)&&e.name){const sg=suggest(e.name,ds);e.sets=clone(sg.prefill)}draw()};
         $('#as',p).onclick=()=>{sync(p);const l=e.sets[e.sets.length-1]||{reps:10,kg:''};e.sets.push({...l});draw()};
@@ -591,8 +629,9 @@ function sheetExercise(ds,entry,presetName,cardio){
       }
       $('#sv',p).onclick=()=>{sync(p);if(!e.name)return toast('Choose an exercise');
         if(e.type==='strength'){e.sets=e.sets.filter(x=>x.reps>0);if(!e.sets.length)return toast('Add at least one set')}
+        if(e.type==='cardio'){if(!num(e.minutes))return toast('Add the minutes');e.kcal=r0(cardioKcal(e))}
         updateDay(ds,d=>{d.workouts=d.workouts||[];const i=d.workouts.findIndex(x=>x.id===e.id);if(i>=0)d.workouts[i]=e;else d.workouts.push(e)});
-        closeSheet();const a=e.type==='strength'?advice(e):null;toast(a?'Logged. Next: '+a.text:'Logged 💪',a?4500:2600)};
+        closeSheet();const a=e.type==='strength'?advice(e):null;toast(a?'Logged. Next: '+a.text:e.type==='cardio'?`Logged: ~${e.kcal} kcal burned 🔥`:'Logged 💪',a?4500:2600)};
       if(entry)$('#del',p).onclick=()=>{updateDay(ds,d=>{d.workouts=(d.workouts||[]).filter(x=>x.id!==e.id)});closeSheet();toast('Deleted')};
     });
   };
@@ -606,7 +645,7 @@ function sheetSettings(){const s=settings();
   <div class="muted small" style="margin-top:12px">Daily targets</div>
   <div class="row"><div><label class="f">Calories</label><input id="k" inputmode="numeric" value="${s.kcal}"></div><div><label class="f">Protein g</label><input id="p" inputmode="numeric" value="${s.protein}"></div></div>
   <div class="row"><div><label class="f">Carbs g</label><input id="c" inputmode="numeric" value="${s.carbs}"></div><div><label class="f">Fat g</label><input id="f" inputmode="numeric" value="${s.fat}"></div></div>
-  <label class="f">Water ml</label><input id="w" inputmode="numeric" value="${s.water}">
+  <div class="row"><div><label class="f">Water ml</label><input id="w" inputmode="numeric" value="${s.water}"></div><div><label class="f">Body weight kg</label><input id="bw" inputmode="decimal" value="${s.bodyKg}"></div></div><div class="muted small">Body weight is used for calorie-burn estimates until you log your weight.</div>
   <label class="f">My exercise list (one per line)</label><textarea id="ex" style="min-height:140px">${esc((s.exercises&&s.exercises.length?s.exercises:DEFAULT_EXERCISES).join('\n'))}</textarea>
   <button class="primary" id="sv">Save settings</button>
   <div class="sec" style="margin-left:0">Backup</div>
@@ -614,7 +653,7 @@ function sheetSettings(){const s=settings();
   <button class="ghost" id="bk" style="width:100%;margin-top:10px">⬇️ Back up my data</button>
   <label class="ghost btnl" style="margin-top:8px">⬆️ Restore from a backup file<input type="file" accept=".json,application/json,text/plain" id="rs" hidden></label>
   <button class="link" id="pst" style="width:100%;margin-top:6px">Restore from copied text</button>`,p=>{
-    $('#sv',p).onclick=()=>{const ns={...(state.docs.settings||{}),name:$('#nm',p).value.trim(),kcal:num($('#k',p).value)||2300,protein:num($('#p',p).value)||170,carbs:num($('#c',p).value)||230,fat:num($('#f',p).value)||75,water:num($('#w',p).value)||3000,exercises:$('#ex',p).value.split('\n').map(x=>x.trim()).filter(Boolean)};save('settings',ns);closeSheet();toast('Settings saved')};
+    $('#sv',p).onclick=()=>{const ns={...(state.docs.settings||{}),name:$('#nm',p).value.trim(),kcal:num($('#k',p).value)||2300,protein:num($('#p',p).value)||170,carbs:num($('#c',p).value)||230,fat:num($('#f',p).value)||75,water:num($('#w',p).value)||3000,bodyKg:num($('#bw',p).value)||110,exercises:$('#ex',p).value.split('\n').map(x=>x.trim()).filter(Boolean)};save('settings',ns);closeSheet();toast('Settings saved')};
     $('#bk',p).onclick=async()=>{localSave();const json=JSON.stringify({app:'myday',v:1,exportedAt:new Date().toISOString(),docs:state.docs});const name=`myday-backup-${TODAY()}.json`;
       try{const file=new File([json],name,{type:'application/json'});
         if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:'My Day backup'});
@@ -646,6 +685,7 @@ $('#app').addEventListener('click',ev=>{
     case 'addCardio':sheetExercise(state.date,null,null,true);break;
     case 'editEx':{const e=(getDay(state.date).workouts||[]).find(x=>x.id===el.dataset.id);if(e)sheetExercise(state.date,e);break}
     case 'template':sheetTemplate(v);break;
+    case 'burnTable':sheetBurnTable();break;
     case 'settings':sheetSettings();break;
   }
 });
