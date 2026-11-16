@@ -168,7 +168,7 @@ function toast(msg,ms=2600){const t=$('#toast');t.textContent=msg;t.classList.ad
 function greeting(){const h=new Date().getHours();return h<5?'Late night':h<12?'Good morning':h<17?'Good afternoon':'Good evening'}
 
 /* ---------- constants ---------- */
-const APP_VERSION='1.4 (16 Nov, Health sync)';
+const APP_VERSION='1.5 (16 Nov)';
 const DEFAULT_SETTINGS={eatBack:50,bodyKg:110,kcal:2300,protein:170,carbs:230,fat:75,water:3000,name:'Zuhair'};
 const DEFAULT_EXERCISES=["Goblet squat","Dumbbell RDL","Incline dumbbell press","Push-ups","Dumbbell row","Lat pulldown","Plank (sec)","Leg press","Dumbbell shoulder press","Bicep curl","Triceps pushdown","Chest press machine","Seated cable row","Lunges"];
 const TEMPLATES={"Full body A":["Goblet squat","Incline dumbbell press","Dumbbell row","Plank (sec)"],"Full body B":["Dumbbell RDL","Push-ups","Lat pulldown","Plank (sec)"]};
@@ -353,11 +353,11 @@ function sheetShortcutHelp(){openSheet(`<h3>Set up "My Day Sync"</h3>
 <div class="muted small">One-time setup in the iPhone <b>Shortcuts</b> app. It reads Apple Health on your phone and copies a short line of text. My Day reads it from your clipboard. Nothing is uploaded anywhere.</div>
 <ol class="steps">
 <li>Shortcuts → <b>+</b> → name it <b>My Day Sync</b>.</li>
-<li>Add <b>Find Health Samples</b>: Type <b>Steps</b>, Start Date <b>is today</b>, Group By <b>Day</b>.</li>
-<li>Add <b>Find Health Samples</b> again: Type <b>Active Energy</b>, Start Date <b>is today</b>, Group By <b>Day</b>.</li>
-<li>Add <b>Find Health Samples</b>: Type <b>Weight</b>, Sort by <b>Start Date</b>, Order <b>Latest First</b>, Limit <b>1</b>.</li>
-<li>Add <b>Text</b> and type exactly:<br><code>MYDAY|date=</code> then insert <b>Current Date</b> (tap it → Date Format <b>Custom</b> → <code>yyyy-MM-dd</code>), then <code>|steps=</code> + the Steps result, <code>|active=</code> + the Active Energy result, <code>|weight=</code> + the Weight result.</li>
-<li>Add <b>Copy to Clipboard</b> (the Text).</li>
+<li>Add <b>Find Health Samples</b>: Type <b>Steps</b>, Start Date <b>is today</b>, Group By <b>Day</b>. Then add <b>Set Variable</b> → name it <code>Steps</code>.</li>
+<li>Add <b>Find Health Samples</b>: Type <b>Active Energy</b>, Start Date <b>is today</b>, Group By <b>Day</b>. Then <b>Set Variable</b> → <code>Active</code>.</li>
+<li>Add <b>Find Health Samples</b>: Type <b>Weight</b>, Sort by <b>Start Date</b>, <b>Latest First</b>, Limit <b>1</b>. Then <b>Set Variable</b> → <code>Weight</code>.</li>
+<li>Add a <b>Text</b> action. In its box, type <code>MYDAY|steps=</code>, then tap <b>Steps</b> in the bar above the keyboard to insert it as a blue bubble. Type <code>|active=</code> and tap <b>Active</b>. Type <code>|weight=</code> and tap <b>Weight</b>.<br>It should read: <code>MYDAY|steps=</code>[Steps]<code>|active=</code>[Active]<code>|weight=</code>[Weight]</li>
+<li>Add <b>Copy to Clipboard</b>.</li>
 <li>Add <b>Show Notification</b>: "Copied. Open My Day and tap Import".</li>
 <li>Run it once and tap <b>Allow</b> for Health access.</li>
 </ol>
